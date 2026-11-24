@@ -1,0 +1,10 @@
+{
+  "name": "link-direto",
+  "version": "1.0.0",
+  "description": "Crie um link de WhatsApp com mensagem pronta, direto no navegador.",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  }
+}
