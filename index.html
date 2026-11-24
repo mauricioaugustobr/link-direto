@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Link Direto — link de WhatsApp com mensagem pronta</title>
+  <meta name="description" content="Crie um link para o seu WhatsApp com mensagem pronta, direto no navegador. Sem cadastro e de código aberto.">
+  <meta name="theme-color" content="#0f7a4d">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%94%97%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="card">
+    <header>
+      <h1>Link Direto</h1>
+      <p class="sub">Crie um link para o seu WhatsApp. Quem clicar já cai na conversa com você, sem precisar salvar seu número.</p>
+    </header>
+
+    <form id="form" novalidate>
+      <label for="ddi">País</label>
+      <select id="ddi" autocomplete="tel-country-code"></select>
+
+      <label for="numero">Número com DDD</label>
+      <input id="numero" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="(21) 99999-8888" aria-describedby="erro">
+      <p id="erro" class="erro" role="alert"></p>
+
+      <label for="mensagem">Mensagem pronta <span class="opc">(opcional)</span></label>
+      <textarea id="mensagem" rows="4" placeholder="Olá! Vi seu perfil e quero saber mais."></textarea>
+      <p id="contador" class="dica">0 caracteres</p>
+    </form>
+
+    <section id="resultado" class="resultado" hidden aria-live="polite">
+      <label for="link">Seu link</label>
+      <input id="link" type="text" readonly>
+      <div class="acoes">
+        <button id="copiar" type="button">Copiar link</button>
+        <a id="abrir" class="sec" href="#" target="_blank" rel="noopener">Testar no WhatsApp</a>
+      </div>
+    </section>
+
+    <footer>
+      Nada sai do seu aparelho: o link é montado aqui mesmo no navegador.<br>
+      <a href="https://github.com/mauricioaugustobr/link-direto">Código aberto (MIT)</a>
+    </footer>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
