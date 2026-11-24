@@ -6,6 +6,20 @@ function onlyDigits(value) {
   return String(value || "").replace(/\D/g, "");
 }
 
+// Tira o 0 de operadora/tronco (021…, 07…) e o código do país colado de novo
+// (+55 21…, +351 9…), já que o país vem do seletor.
+function normalizeLocal(ddi, value) {
+  const raw = String(value || "").trim();
+  let digits = onlyDigits(raw);
+  if (/^(\+|00)/.test(raw)) {
+    digits = digits.replace(/^00/, "");
+    if (digits.startsWith(ddi)) digits = digits.slice(ddi.length);
+  } else if (ddi === "55" && digits.length > 11 && digits.startsWith("55")) {
+    digits = digits.slice(2);
+  }
+  return digits.replace(/^0+/, "");
+}
+
 // Brasil: DDD + 8 ou 9 dígitos. Outros países: 6 a 14 dígitos.
 function validateNumber(ddi, numero) {
   const digits = onlyDigits(numero);
@@ -38,7 +52,7 @@ function formatBR(digits) {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { onlyDigits, validateNumber, buildLink, formatBR };
+  module.exports = { onlyDigits, normalizeLocal, validateNumber, buildLink, formatBR };
 }
 
 // ---- Interface ----
@@ -87,17 +101,15 @@ if (typeof document !== "undefined") {
   }
 
   function update() {
-    let digits = onlyDigits(numero.value);
+    const digits = normalizeLocal(ddi.value, numero.value);
     if (ddi.value === "55") {
-      // Colou com +55 na frente? Tira, o código do país já está no seletor.
-      if (digits.length > 11 && digits.startsWith("55")) digits = digits.slice(2);
       numero.value = formatBR(digits);
       numero.placeholder = "(21) 99999-9999";
     } else {
       numero.placeholder = "Número com código de área";
     }
 
-    const check = validateNumber(ddi.value, numero.value);
+    const check = validateNumber(ddi.value, ddi.value === "55" ? numero.value : digits);
     const text = mensagem.value.trim();
     count.textContent = mensagem.value.length + "/1000";
 
