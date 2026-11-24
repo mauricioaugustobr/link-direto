@@ -1,123 +1,175 @@
-/* Link Direto — gera links wa.me do WhatsApp. Roda 100% no navegador. */
-(function (root) {
-  'use strict';
+// Link Direto — tudo roda no navegador, nada é enviado.
 
-  var PAISES = [
-    { ddi: '55', nome: 'Brasil' },
-    { ddi: '351', nome: 'Portugal' },
-    { ddi: '1', nome: 'EUA / Canadá' },
-    { ddi: '54', nome: 'Argentina' },
-    { ddi: '598', nome: 'Uruguai' },
-    { ddi: '595', nome: 'Paraguai' },
-    { ddi: '56', nome: 'Chile' },
-    { ddi: '57', nome: 'Colômbia' },
-    { ddi: '52', nome: 'México' },
-    { ddi: '34', nome: 'Espanha' },
-    { ddi: '44', nome: 'Reino Unido' },
-    { ddi: '244', nome: 'Angola' },
-    { ddi: '258', nome: 'Moçambique' }
-  ];
+// ---- Funções puras (testáveis) ----
 
-  function soDigitos(s) {
-    return String(s == null ? '' : s).replace(/\D+/g, '');
+function onlyDigits(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+// Brasil: DDD + 8 ou 9 dígitos. Outros países: 6 a 14 dígitos.
+function validateNumber(ddi, numero) {
+  const digits = onlyDigits(numero);
+  if (!digits) return { ok: false, reason: "empty" };
+  if (ddi === "55") {
+    if (digits.length < 10) return { ok: false, reason: "short" };
+    if (digits.length > 11) return { ok: false, reason: "long" };
+    return { ok: true, digits };
+  }
+  if (digits.length < 6) return { ok: false, reason: "short" };
+  if (digits.length > 14) return { ok: false, reason: "long" };
+  return { ok: true, digits };
+}
+
+function buildLink({ ddi, numero, mensagem }) {
+  const digits = onlyDigits(ddi) + onlyDigits(numero);
+  const text = String(mensagem || "").trim();
+  return "https://wa.me/" + digits + (text ? "?text=" + encodeURIComponent(text) : "");
+}
+
+// Máscara só para o Brasil: (21) 99999-9999 / (21) 3333-4444
+function formatBR(digits) {
+  const d = digits.slice(0, 11);
+  if (d.length <= 2) return d.length ? "(" + d : "";
+  const ddd = d.slice(0, 2);
+  const rest = d.slice(2);
+  const split = rest.length > 8 ? 5 : 4;
+  if (rest.length <= split) return "(" + ddd + ") " + rest;
+  return "(" + ddd + ") " + rest.slice(0, split) + "-" + rest.slice(split);
+}
+
+if (typeof module !== "undefined") {
+  module.exports = { onlyDigits, validateNumber, buildLink, formatBR };
+}
+
+// ---- Interface ----
+
+if (typeof document !== "undefined") {
+  const $ = (id) => document.getElementById(id);
+  const ddi = $("ddi");
+  const numero = $("numero");
+  const mensagem = $("mensagem");
+  const count = $("count");
+  const hint = $("numero-hint");
+  const phone = document.querySelector(".phone");
+  const result = $("result");
+  const link = $("link");
+  const copiar = $("copiar");
+  const abrir = $("abrir");
+  const compartilhar = $("compartilhar");
+  const previewNumero = $("preview-numero");
+  const previewMsg = $("preview-msg");
+  const toast = $("toast");
+
+  const HINT_DEFAULT = "Com DDD. Só números, a gente formata.";
+  const HINT_ERRORS = {
+    short: "Faltam dígitos. Confira o DDD e o número.",
+    long: "Dígitos demais. Tire o código do país, ele já está ao lado.",
+  };
+
+  let current = "";
+  let touched = false;
+  let toastTimer;
+
+  if (navigator.share) compartilhar.hidden = false;
+
+  function showToast(text) {
+    toast.textContent = text;
+    toast.classList.add("is-visible");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove("is-visible"), 1800);
   }
 
-  // Junta DDI + número. Aceita número já com "+DDI" ou "00DDI" colado.
-  function montarNumero(ddi, numero) {
-    var bruto = String(numero == null ? '' : numero).trim();
-    var d = soDigitos(ddi);
-    var n = soDigitos(bruto);
-    var internacional = /^\s*(\+|00)/.test(bruto);
-    if (internacional) {
-      n = n.replace(/^00/, '');
-      return n;
+  function setEnabled(on) {
+    copiar.disabled = !on;
+    compartilhar.disabled = !on;
+    abrir.setAttribute("aria-disabled", String(!on));
+    abrir.tabIndex = on ? 0 : -1;
+  }
+
+  function update() {
+    let digits = onlyDigits(numero.value);
+    if (ddi.value === "55") {
+      // Colou com +55 na frente? Tira, o código do país já está no seletor.
+      if (digits.length > 11 && digits.startsWith("55")) digits = digits.slice(2);
+      numero.value = formatBR(digits);
+      numero.placeholder = "(21) 99999-9999";
+    } else {
+      numero.placeholder = "Número com código de área";
     }
-    n = n.replace(/^0+/, ''); // tira 0 de operadora/DDD (ex.: 021...)
-    if (d === '55' && n.length >= 12 && n.indexOf('55') === 0) return n; // já veio com 55
-    return d + n;
-  }
 
-  // Retorna null se ok, ou a mensagem de erro.
-  function validar(ddi, numero) {
-    var bruto = String(numero == null ? '' : numero).trim();
-    if (!soDigitos(bruto)) return 'Digite o número com DDD.';
-    var completo = montarNumero(ddi, numero);
-    if (completo.length < 8 || completo.length > 15) return 'Número inválido: confira o DDI e o DDD.';
-    if (completo.indexOf('55') === 0) { // +55 é só o Brasil
-      var local = completo.slice(2);
-      if (local.length !== 10 && local.length !== 11) {
-        return 'No Brasil o número tem DDD + 8 ou 9 dígitos (ex.: 21 99999-8888).';
-      }
+    const check = validateNumber(ddi.value, numero.value);
+    const text = mensagem.value.trim();
+    count.textContent = mensagem.value.length + "/1000";
+
+    const showError = !check.ok && check.reason !== "empty" && touched;
+    phone.classList.toggle("is-error", showError);
+    hint.classList.toggle("is-error", showError);
+    hint.textContent = showError ? HINT_ERRORS[check.reason] : HINT_DEFAULT;
+
+    previewNumero.textContent =
+      "+" + ddi.value + " " + (numero.value || (ddi.value === "55" ? "(21) 99999-9999" : "seu número"));
+    previewMsg.textContent = text || "Sem mensagem pronta: o cliente escreve do zero.";
+    previewMsg.classList.toggle("is-empty", !text);
+
+    if (check.ok) {
+      current = buildLink({ ddi: ddi.value, numero: check.digits, mensagem: text });
+      // Mostra legível; copia a versão codificada.
+      link.textContent = "wa.me/" + ddi.value + check.digits + (text ? "?text=" + text : "");
+      abrir.href = current;
+      result.dataset.state = "ready";
+      setEnabled(true);
+    } else {
+      current = "";
+      link.textContent = "Digite o número para gerar o link";
+      abrir.href = "#";
+      result.dataset.state = "empty";
+      setEnabled(false);
     }
-    return null;
   }
 
-  function gerarLink(ddi, numero, mensagem) {
-    var link = 'https://wa.me/' + montarNumero(ddi, numero);
-    var msg = String(mensagem == null ? '' : mensagem).trim();
-    if (msg) link += '?text=' + encodeURIComponent(msg);
-    return link;
-  }
-
-  var api = { PAISES: PAISES, soDigitos: soDigitos, montarNumero: montarNumero, validar: validar, gerarLink: gerarLink };
-
-  if (typeof module !== 'undefined' && module.exports) {
-    module.exports = api;
-    return;
-  }
-  root.LinkDireto = api;
-
-  // ---- Interface ----
-  var $ = function (id) { return document.getElementById(id); };
-  function iniciar() {
-    var selDdi = $('ddi'), inNum = $('numero'), inMsg = $('mensagem');
-    var saida = $('resultado'), campoLink = $('link'), erro = $('erro');
-    var btCopiar = $('copiar'), btAbrir = $('abrir'), contador = $('contador');
-
-    PAISES.forEach(function (p) {
-      var o = document.createElement('option');
-      o.value = p.ddi;
-      o.textContent = p.nome + ' (+' + p.ddi + ')';
-      selDdi.appendChild(o);
-    });
-
-    var saiuDoCampo = false; // só aponta erro depois que a pessoa termina de digitar
-
-    function atualizar() {
-      contador.textContent = inMsg.value.length + ' caracteres';
-      var msgErro = inNum.value.trim() ? validar(selDdi.value, inNum.value) : null;
-      erro.textContent = saiuDoCampo && msgErro ? msgErro : '';
-      inNum.setAttribute('aria-invalid', saiuDoCampo && msgErro ? 'true' : 'false');
-      if (!inNum.value.trim() || msgErro) {
-        saida.hidden = true;
-        return;
-      }
-      var link = gerarLink(selDdi.value, inNum.value, inMsg.value);
-      campoLink.value = link;
-      btAbrir.href = link;
-      saida.hidden = false;
+  async function copy() {
+    if (!current) return;
+    try {
+      await navigator.clipboard.writeText(current);
+    } catch {
+      const tmp = document.createElement("textarea");
+      tmp.value = current;
+      document.body.appendChild(tmp);
+      tmp.select();
+      document.execCommand("copy");
+      tmp.remove();
     }
-
-    [selDdi, inNum, inMsg].forEach(function (el) { el.addEventListener('input', atualizar); });
-    inNum.addEventListener('blur', function () { saiuDoCampo = true; atualizar(); });
-    $('form').addEventListener('submit', function (e) { e.preventDefault(); saiuDoCampo = true; atualizar(); });
-
-    btCopiar.addEventListener('click', function () {
-      var feito = function () {
-        btCopiar.textContent = 'Copiado!';
-        setTimeout(function () { btCopiar.textContent = 'Copiar link'; }, 1800);
-      };
-      if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(campoLink.value).then(feito, function () { campoLink.select(); document.execCommand('copy'); feito(); });
-      } else {
-        campoLink.select();
-        document.execCommand('copy');
-        feito();
-      }
-    });
-    atualizar();
+    copiar.classList.add("is-done");
+    copiar.querySelector("span").textContent = "Copiado!";
+    showToast("Link copiado. Cola na bio, no site ou no anúncio.");
+    setTimeout(() => {
+      copiar.classList.remove("is-done");
+      copiar.querySelector("span").textContent = "Copiar link";
+    }, 1800);
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar);
-  else iniciar();
-})(typeof window !== 'undefined' ? window : this);
+  numero.addEventListener("input", update);
+  numero.addEventListener("blur", () => {
+    touched = true;
+    update();
+  });
+  ddi.addEventListener("change", update);
+  mensagem.addEventListener("input", update);
+  copiar.addEventListener("click", copy);
+  compartilhar.addEventListener("click", () => {
+    if (current) navigator.share({ title: "Fale comigo no WhatsApp", url: current }).catch(() => {});
+  });
+  document.querySelectorAll(".chip").forEach((chip) =>
+    chip.addEventListener("click", () => {
+      mensagem.value = chip.dataset.msg;
+      update();
+      mensagem.focus();
+    })
+  );
+  document.getElementById("form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    copy();
+  });
+
+  update();
+}

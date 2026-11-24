@@ -1,48 +1,146 @@
 <!doctype html>
 <html lang="pt-BR">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Link Direto — link de WhatsApp com mensagem pronta</title>
-  <meta name="description" content="Crie um link para o seu WhatsApp com mensagem pronta, direto no navegador. Sem cadastro e de código aberto.">
-  <meta name="theme-color" content="#0f7a4d">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%94%97%3C/text%3E%3C/svg%3E">
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <main class="card">
-    <header>
-      <h1>Link Direto</h1>
-      <p class="sub">Crie um link para o seu WhatsApp. Quem clicar já cai na conversa com você, sem precisar salvar seu número.</p>
-    </header>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Link Direto — crie seu link de WhatsApp</title>
+    <meta
+      name="description"
+      content="Transforme seu número de WhatsApp em um link com mensagem pronta. Gratuito, sem cadastro e open source."
+    />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#0f6b4f" />
+    <meta property="og:title" content="Link Direto" />
+    <meta
+      property="og:description"
+      content="Receba mensagens no WhatsApp sem pedir para o cliente salvar seu número."
+    />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main>
+      <header class="hero">
+        <p class="kicker">Gratuito · sem cadastro · open source</p>
+        <h1>Link <em>Direto</em></h1>
+        <p class="sub">
+          Crie um link que abre uma conversa no WhatsApp com você, sem o cliente precisar salvar seu número.
+        </p>
+      </header>
 
-    <form id="form" novalidate>
-      <label for="ddi">País</label>
-      <select id="ddi" autocomplete="tel-country-code"></select>
+      <div class="layout">
+        <form class="card form" id="form" novalidate autocomplete="off">
+          <fieldset class="phone">
+            <legend>Seu número de WhatsApp</legend>
+            <div class="phone-row">
+              <label class="visually-hidden" for="ddi">Código do país</label>
+              <select id="ddi" name="ddi">
+                <option value="55" selected>🇧🇷 +55</option>
+                <option value="351">🇵🇹 +351</option>
+                <option value="1">🇺🇸 +1</option>
+                <option value="54">🇦🇷 +54</option>
+                <option value="56">🇨🇱 +56</option>
+                <option value="57">🇨🇴 +57</option>
+                <option value="52">🇲🇽 +52</option>
+                <option value="595">🇵🇾 +595</option>
+                <option value="51">🇵🇪 +51</option>
+                <option value="598">🇺🇾 +598</option>
+                <option value="244">🇦🇴 +244</option>
+                <option value="258">🇲🇿 +258</option>
+                <option value="34">🇪🇸 +34</option>
+                <option value="44">🇬🇧 +44</option>
+                <option value="49">🇩🇪 +49</option>
+                <option value="33">🇫🇷 +33</option>
+                <option value="39">🇮🇹 +39</option>
+              </select>
+              <label class="visually-hidden" for="numero">Número com DDD</label>
+              <input
+                id="numero"
+                name="numero"
+                type="tel"
+                inputmode="tel"
+                placeholder="(21) 99999-9999"
+                aria-describedby="numero-hint"
+                autocomplete="tel-national"
+              />
+            </div>
+            <p class="hint" id="numero-hint" aria-live="polite">Com DDD. Só números, a gente formata.</p>
+          </fieldset>
 
-      <label for="numero">Número com DDD</label>
-      <input id="numero" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="(21) 99999-8888" aria-describedby="erro">
-      <p id="erro" class="erro" role="alert"></p>
+          <div class="field">
+            <div class="label-row">
+              <label for="mensagem">Mensagem pronta <span class="opt">opcional</span></label>
+              <span class="count" id="count">0</span>
+            </div>
+            <textarea
+              id="mensagem"
+              name="mensagem"
+              rows="4"
+              maxlength="1000"
+              placeholder="Olá! Vi seu anúncio e quero saber mais."
+            ></textarea>
+            <div class="chips" role="group" aria-label="Sugestões de mensagem">
+              <button type="button" class="chip" data-msg="Olá! Vim pelo Instagram e quero saber mais.">Vim pelo Instagram</button>
+              <button type="button" class="chip" data-msg="Olá! Gostaria de fazer um orçamento.">Orçamento</button>
+              <button type="button" class="chip" data-msg="Olá! Quero agendar um horário.">Agendar</button>
+            </div>
+          </div>
 
-      <label for="mensagem">Mensagem pronta <span class="opc">(opcional)</span></label>
-      <textarea id="mensagem" rows="4" placeholder="Olá! Vi seu perfil e quero saber mais."></textarea>
-      <p id="contador" class="dica">0 caracteres</p>
-    </form>
+          <section class="result" id="result" aria-live="polite" data-state="empty">
+            <p class="result-label">Seu link</p>
+            <p class="visually-hidden">O link copiado vai com a mensagem codificada; aqui mostramos legível.</p>
+            <output class="link" id="link" for="ddi numero mensagem">Digite o número para gerar o link</output>
+            <div class="actions">
+              <button type="button" class="btn primary" id="copiar" disabled>
+                <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+                <span>Copiar link</span>
+              </button>
+              <a class="btn ghost" id="abrir" href="#" target="_blank" rel="noopener" aria-disabled="true" tabindex="-1">
+                <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></svg>
+                <span>Testar</span>
+              </a>
+              <button type="button" class="btn ghost" id="compartilhar" hidden>
+                <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+                <span>Compartilhar</span>
+              </button>
+            </div>
+          </section>
+        </form>
 
-    <section id="resultado" class="resultado" hidden aria-live="polite">
-      <label for="link">Seu link</label>
-      <input id="link" type="text" readonly>
-      <div class="acoes">
-        <button id="copiar" type="button">Copiar link</button>
-        <a id="abrir" class="sec" href="#" target="_blank" rel="noopener">Testar no WhatsApp</a>
+        <aside class="preview" aria-label="Prévia de como o cliente vê a conversa">
+          <div class="phone-frame">
+            <div class="chat-top">
+              <span class="avatar" aria-hidden="true">💬</span>
+              <span class="chat-name" id="preview-numero">+55 (21) 99999-9999</span>
+            </div>
+            <div class="chat-body">
+              <p class="chat-note">Quando o cliente tocar no link, a conversa abre assim:</p>
+              <div class="bubble" id="preview-msg">Olá! Vi seu anúncio e quero saber mais.</div>
+            </div>
+            <div class="chat-input" aria-hidden="true"><span>Mensagem</span><span class="send">➤</span></div>
+          </div>
+        </aside>
       </div>
-    </section>
 
-    <footer>
-      Nada sai do seu aparelho: o link é montado aqui mesmo no navegador.<br>
-      <a href="https://github.com/mauricioaugustobr/link-direto">Código aberto (MIT)</a>
-    </footer>
-  </main>
-  <script src="app.js"></script>
-</body>
+      <section class="how">
+        <h2>Onde usar</h2>
+        <ul>
+          <li><strong>Na bio</strong> do Instagram e do TikTok</li>
+          <li><strong>No seu site</strong> no Google Meu Negócio e na assinatura de e-mail</li>
+          <li><strong>Nos anúncios</strong> no catálogo e no cardápio online</li>
+        </ul>
+      </section>
+
+      <footer>
+        <p>
+          Tudo roda no seu navegador: nenhum número é enviado ou guardado.
+          <a href="https://github.com/mauricioaugustobr/link-direto">Código aberto (MIT)</a>
+        </p>
+      </footer>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
 </html>

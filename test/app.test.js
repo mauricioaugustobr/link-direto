@@ -1,48 +1,55 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { montarNumero, validar, gerarLink } = require('../app.js');
+const { onlyDigits, validateNumber, buildLink, formatBR } = require('../app.js');
 
-test('junta DDI e número com máscara', () => {
-  assert.equal(montarNumero('55', '(21) 99999-8888'), '5521999998888');
-});
-
-test('remove zero de DDD/operadora', () => {
-  assert.equal(montarNumero('55', '021 99999-8888'), '5521999998888');
-});
-
-test('aceita número colado já com +DDI', () => {
-  assert.equal(montarNumero('55', '+351 912 345 678'), '351912345678');
-  assert.equal(montarNumero('55', '00 1 415 555 0100'), '14155550100');
-});
-
-test('não duplica 55 quando a pessoa já digitou', () => {
-  assert.equal(montarNumero('55', '55 21 99999-8888'), '5521999998888');
-});
-
-test('link sem mensagem', () => {
-  assert.equal(gerarLink('55', '21 99999-8888', ''), 'https://wa.me/5521999998888');
-});
-
-test('link com mensagem codifica acentos, espaços, emoji e quebra de linha', () => {
-  const link = gerarLink('55', '21999998888', 'Olá! Quero um orçamento & prazo\n😀');
-  assert.equal(link, 'https://wa.me/5521999998888?text=' + encodeURIComponent('Olá! Quero um orçamento & prazo\n😀'));
-  assert.ok(!link.includes(' '));
-  assert.equal(new URL(link).searchParams.get('text'), 'Olá! Quero um orçamento & prazo\n😀');
-});
-
-test('mensagem só com espaços é ignorada', () => {
-  assert.equal(gerarLink('55', '21999998888', '   '), 'https://wa.me/5521999998888');
+test('onlyDigits remove máscara e símbolos', () => {
+  assert.equal(onlyDigits('(21) 99999-8888'), '21999998888');
+  assert.equal(onlyDigits('+55 21'), '5521');
+  assert.equal(onlyDigits(null), '');
 });
 
 test('validação Brasil: DDD + 8 ou 9 dígitos', () => {
-  assert.equal(validar('55', '21 99999-8888'), null);
-  assert.equal(validar('55', '21 3333-4444'), null);
-  assert.match(validar('55', '99999-8888'), /DDD/);
-  assert.match(validar('55', ''), /DDD/);
+  assert.deepEqual(validateNumber('55', '(21) 99999-8888'), { ok: true, digits: '21999998888' });
+  assert.equal(validateNumber('55', '21 3333-4444').ok, true);
+  assert.equal(validateNumber('55', '99999-8888').reason, 'short');
+  assert.equal(validateNumber('55', '219999988880').reason, 'long');
+  assert.equal(validateNumber('55', '').reason, 'empty');
 });
 
-test('validação de outros países pelo tamanho E.164', () => {
-  assert.equal(validar('351', '912 345 678'), null);
-  assert.match(validar('1', '12'), /inválido/);
-  assert.match(validar('351', '1234567890123456'), /inválido/);
+test('validação de outros países: 6 a 14 dígitos', () => {
+  assert.equal(validateNumber('351', '912 345 678').ok, true);
+  assert.equal(validateNumber('1', '12').reason, 'short');
+  assert.equal(validateNumber('351', '123456789012345').reason, 'long');
+});
+
+test('link sem mensagem', () => {
+  assert.equal(buildLink({ ddi: '55', numero: '(21) 99999-8888', mensagem: '' }), 'https://wa.me/5521999998888');
+});
+
+test('mensagem só com espaços é ignorada', () => {
+  assert.equal(buildLink({ ddi: '55', numero: '21999998888', mensagem: '   ' }), 'https://wa.me/5521999998888');
+});
+
+test('link com mensagem codifica acentos, espaços, emoji e quebra de linha', () => {
+  const msg = 'Olá! Quero um orçamento & prazo\n😀';
+  const link = buildLink({ ddi: '55', numero: '21999998888', mensagem: msg });
+  assert.equal(link, 'https://wa.me/5521999998888?text=' + encodeURIComponent(msg));
+  assert.ok(!link.includes(' '));
+  assert.equal(new URL(link).searchParams.get('text'), msg);
+});
+
+test('exemplo da interface', () => {
+  assert.equal(
+    buildLink({ ddi: '+55', numero: '21 99999-8888', mensagem: 'Olá! Gostaria de fazer um orçamento.' }),
+    'https://wa.me/5521999998888?text=Ol%C3%A1!%20Gostaria%20de%20fazer%20um%20or%C3%A7amento.'
+  );
+});
+
+test('formatBR aplica a máscara enquanto digita', () => {
+  assert.equal(formatBR(''), '');
+  assert.equal(formatBR('2'), '(2');
+  assert.equal(formatBR('2199'), '(21) 99');
+  assert.equal(formatBR('2133334444'), '(21) 3333-4444');
+  assert.equal(formatBR('21999998888'), '(21) 99999-8888');
+  assert.equal(formatBR('219999988889'), '(21) 99999-8888');
 });
